@@ -1,0 +1,46 @@
+#Importing the required libraries
+import numpy as np
+import pandas as pd
+
+#Uploading the dataset
+from google.colab import files
+uploaded = files.upload()
+
+#Reading the dataset
+data1 = pd.read_csv("FuelConsumption.csv")
+
+#Splitting the data into X and y
+X = data1[['ENGINESIZE', 'CYLINDERS', 'FUELCONSUMPTION_COMB']].values
+y = data1['CO2EMISSIONS'].values
+
+#Splitting the data into training and testing sets
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=50)
+
+#Creating the model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+model = Sequential() #Brain without neurons
+
+#Adding neurons to the brain
+model.add(Dense(500, input_shape=(3,), activation='relu')) #Input layer
+model.add(Dense(500, activation='relu')) #Hidden layer
+model.add(Dense(1)) #Output layer
+
+#Model summary
+model.summary()
+
+#Compiling the model
+model.compile(loss="mean_squared_error", optimizer="adam")
+
+#Training the model
+model.fit(X_train, y_train, epochs=1000, batch_size=100)
+
+#Predicting the Sample
+model.predict([[3,6,5.9]])
+
+#Checking the Accuracy
+from sklearn.metrics import r2_score
+y_pred = model.predict(X_test)
+r2_score(y_test, y_pred)
