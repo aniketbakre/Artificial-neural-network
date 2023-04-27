@@ -1,0 +1,100 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+#Import Dataset
+data=pd.read_csv(r"C:\Users\anikbakr\Desktop\AI and ML\Data Science\Projects\Deep learning\LSTM\ITC.csv")
+
+#Check the data from above topmost columns
+data.head()
+
+#List the names of all the columns of dataset
+data.columns
+
+#check the shape 
+data.shape
+
+#Drop unwanted columns
+data1=data.drop(['Date', 'Symbol', 'Series', 'Prev Close', 'Open', 'Low', 'Last',
+       'Close', 'VWAP', 'Volume', 'Turnover', 'Trades', 'Deliverable Volume',
+       '%Deliverble'],axis='columns')
+type(data1)
+data1.shape
+
+# Normalize the data using MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
+data1.head()
+scalar=MinMaxScaler(feature_range=(0,1))
+data1=scalar.fit_transform(data1)
+data1
+
+# Split the data into training and testing sets
+len(data1)
+training_size=4000
+train, test=data1[0:training_size,:],data1[training_size:len(data1),:]
+train.shape
+test.shape
+
+look_back=10
+
+#Create function
+def create_x_y(data1,look_back):
+    x_data,y_data=[],[]
+    for i in range(len(data1)-look_back-1):
+        iv=data1[i:(i+look_back),0]
+        dv=data1[i+look_back,0]
+        x_data.append(iv)
+        y_data.append(dv)
+    x_data=np.array(x_data)
+    y_data=np.array(y_data)
+    return x_data, y_data
+        
+x_train,y_train=create_x_y(train,look_back)
+x_test,y_test=create_x_y(test,10)
+x_train.shape
+x_test.shape
+x_train=np.reshape(x_train,(x_train.shape[0],1,x_train.shape[1]))
+x_test=np.reshape(x_test,(x_test.shape[0],1,x_test.shape[1]))
+x_train.shape
+x_test.shape
+
+# Define the LSTM model
+from tensorflow.keras.models import Sequential
+model=Sequential() # brain without neuron
+from tensorflow.keras.layers import LSTM,Dense
+model.add(LSTM(4, input_shape=(1,look_back),return_sequences=True))
+model.add(LSTM(4,return_sequences=True))
+model.add(LSTM(4))
+
+model.add(Dense(1))
+model.summary()
+
+# Compile the model with the loss function and optimizer
+model.compile(loss='mean_squared_error', optimizer='adam')
+
+#Train the model
+model.fit(x_train,y_train, epochs=100, batch_size=100)
+
+# Make predictions on the test set
+y_pred=model.predict(x_test)
+y_pred[:5]
+
+#Inverse transform the values to get the original scale
+y_pred=scalar.inverse_transform(y_pred)
+y_pred[:5]
+y_test[:5]
+y_test=scalar.inverse_transform([y_test])
+y_test
+
+#Plot the prediction along with test data for comparison 
+import matplotlib.pyplot as plt
+plt.plot(y_pred, c='b')
+y_test.shape
+y_test.T.shape
+plt.plot(y_test.T,c='g')
+plt.plot(y_pred, c='b')
+
+# Compute the mean absolute error
+from sklearn.metrics import mean_absolute_error
+mae=mean_absolute_error(y_test.T,y_pred)
+print("main absolute error is", mae)
