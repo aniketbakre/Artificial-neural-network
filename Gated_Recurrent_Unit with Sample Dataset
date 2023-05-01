@@ -1,0 +1,48 @@
+import numpy as np
+import tensorflow as tf
+
+# Load the IMDB dataset, which consists of movie reviews labeled as positive or negative
+imdb = tf.keras.datasets.imdb
+(x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=10000)
+
+# Define a function to vectorize the sequences, i.e., convert them into one-hot encodings
+def vectorizer(sequence, max_length=10000):
+    results = np.zeros((len(sequence), max_length))
+    for i, seq in enumerate(sequence):
+        # Set the positions of the words in the sequence to 1
+        results[i, seq] = 1
+    return results
+
+# Vectorize the training and testing sequences
+x_train_new = vectorizer(x_train)
+x_test_new = vectorizer(x_test)
+
+# Check the shape of the training data
+print(x_train_new.shape)  # should be (25000, 10000)
+
+# Add an extra dimension to the data to make it compatible with the GRU layer (Sequential taking only 3D data)
+x_train_new = np.expand_dims(x_train_new, axis=1)
+x_test_new = np.expand_dims(x_test_new, axis=1)
+
+# Define a Sequential model
+model = tf.keras.models.Sequential()
+
+# Add a GRU layer with 32 units and return the full sequence of outputs
+model.add(tf.keras.layers.GRU(32, return_sequences=True))
+
+# Add another GRU layer with 32 units that returns only the last output
+model.add(tf.keras.layers.GRU(32))
+g
+# Add a Dense layer with a single unit and sigmoid activation function to produce a binary output
+model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+
+# Compile the model with binary crossentropy loss and Adam optimizer
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Train the model on the training data and validate on the testing data for 10 epochs
+history = model.fit(x_train_new, y_train, validation_data=(x_test_new, y_test), epochs=10)
+
+# Plot the training and validation losses
+import matplotlib.pyplot as plt
+plt.plot(history.history['loss'], c='b')
+plt.plot(history.history['val_loss'], c='r')
