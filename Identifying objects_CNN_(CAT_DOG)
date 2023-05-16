@@ -1,0 +1,104 @@
+# Import necessary modules
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
+
+# Define image dimensions
+img_width, image_height = 224, 224
+
+# Define input shape
+input_shape = (img_width, image_height, 3)
+
+# Create a Sequential model
+model = Sequential()
+
+# Add a convolutional layer with 32 filters and a 2x2 kernel
+model.add(Conv2D(32, (2, 2), input_shape=input_shape))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Add another convolutional layer with 32 filters and a 2x2 kernel
+model.add(Conv2D(32, (2, 2)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Add another convolutional layer with 64 filters and a 2x2 kernel
+model.add(Conv2D(64, (2, 2)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Add another convolutional layer with 64 filters and a 2x2 kernel
+model.add(Conv2D(64, (2, 2)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Add another convolutional layer with 64 filters and a 2x2 kernel
+model.add(Conv2D(64, (2, 2)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Flatten the output
+model.add(Flatten())
+
+# Add a fully connected dense layer with 64 units
+model.add(Dense(64))
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+
+# Add the final dense layer with a single unit and sigmoid activation
+model.add(Dense(1))
+model.add(Activation('sigmoid'))
+
+# Compile the model
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Print model summary
+model.summary()
+
+# Set directories for training and test data
+train_data_dir = 'CNN/train'
+test_data_dir = 'CNN/test'
+
+# Create ImageDataGenerator objects for data augmentation
+train_datagen = ImageDataGenerator()
+test_datagen = ImageDataGenerator()
+
+# Generate batches of training data
+train_generator = train_datagen.flow_from_directory(
+    train_data_dir,
+    target_size=(img_width, image_height),
+    batch_size=500,
+    class_mode='binary'
+)
+
+# Generate batches of test data
+test_generator = test_datagen.flow_from_directory(
+    test_data_dir,
+    target_size=(img_width, image_height),
+    batch_size=500,
+    class_mode='binary'
+)
+
+# Train the model
+model.fit(
+    train_generator,
+    steps_per_epoch=10,
+    epochs=50,
+    validation_data=test_generator,
+    validation_steps=10
+)
+
+# Load and preprocess the image to be predicted
+image = load_img('d2.jfif', target_size=(img_width, image_height))
+image_arr = np.array(image)
+image_arr = image_arr.reshape(1, img_width, image_height, 3)
+
+# Predict the label for the image
+label = model.predict(image_arr)[0][0]
+
+# Print the predicted label
+if label >= 0.5:
+    print("Dog")
+else:
+    print("Cat")
