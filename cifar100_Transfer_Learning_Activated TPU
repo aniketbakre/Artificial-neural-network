@@ -1,0 +1,90 @@
+import tensorflow as tf
+from keras.datasets import cifar100
+from tensorflow.keras.preprocessing.image import img_to_array, array_to_img
+from PIL import Image
+import numpy as np
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Flatten, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+
+# Detect and initialize the TPU
+tpu = tf.distribute.cluster_resolver.TPUClusterResolver.connect()
+
+# Instantiate a distribution strategy
+tpu_strategy = tf.distribute.experimental.TPUStrategy(tpu)
+
+with tpu_strategy.scope():
+    # Load CIFAR-100 dataset
+    (x_train, y_train), (x_test, y_test) = cifar100.load_data()
+
+    # Resize images
+    def resize_images(images):
+        resized_images = []
+        for image in images:
+            image = img_to_array(image)
+            image = Image.fromarray(image.astype('uint8'))
+            image = image.resize((75, 75))
+            image = img_to_array(image)
+            resized_images.append(image)
+        return np.array(resized_images)
+
+    x_train = resize_images(x_train)
+    x_test = resize_images(x_test)
+
+    # Normalize pixel values
+    x_train = x_train.astype('float32') / 255
+    x_test = x_test.astype('float32') / 255
+
+    # Convert labels to categorical
+    y_train = to_categorical(y_train, num_classes=100)
+    y_test = to_categorical(y_test, num_classes=100)
+
+    # Load pre-trained InceptionV3 model
+    base_model = InceptionV3(weights='imagenet', include_top=False, input_shape=(75, 75, 3))
+
+    # Freeze the layers of the pre-trained model
+    for layer in base_model.layers:
+        layer.trainable = False
+
+    # Create the model
+    model = Sequential()
+    model.add(base_model)
+    model.add(Flatten())
+    model.add(Dense(256, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(128, activation='relu'))  # Added hidden layer
+    model.add(Dropout(0.5))
+    model.add(Dense(64, activation='relu'))  # Added hidden layer
+    model.add(Dropout(0.5))
+    model.add(Dense(100, activation='softmax'))
+
+    # Compile the model
+    adam = Adam(learning_rate=0.0001)
+    model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # Train the model
+    history = model.fit(x_train, y_train, batch_size=200, epochs=250, validation_data=(x_test, y_test))
+    
+    
+# Visualization
+
+import matplotlib.pyplot as plt
+
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs = range(len(acc))
+
+plt.plot(epochs, acc, 'r', label='Training accuracy')
+plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
+plt.title('Training and Validation accuracy')
+plt.legend()
+plt.figure()
+
+plt.plot(epochs, loss, 'r', label='Training Loss')
+plt.plot(epochs, val_loss, 'b', label='Validation Loss')
+plt.title('Training and Validation loss')
+plt.legend()
